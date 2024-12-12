@@ -1,6 +1,8 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
@@ -8,8 +10,16 @@ import json
 import time
 from exportJson import json_to_excel, json_to_mysql
 
+chrome_options = Options()
+chrome_options.add_argument("--headless")  # Modo sin interfaz gráfica
+chrome_options.add_argument("--no-sandbox")  # Necesario para entornos sin privilegios
+chrome_options.add_argument("--disable-dev-shm-usage")  # Soluciona problemas de memoria compartida en algunos sistemas
+chrome_options.add_argument("--disable-gpu")  # Opcional, puede mejorar la estabilidad
+chrome_options.add_argument("--window-size=1920,1080")  # Tamaño de la ventana virtual
+
 # Inicializar el WebDriver
-driver = webdriver.Chrome()
+service = Service('chromedriver.exe')  # Ruta al ejecutable de ChromeDriver
+driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # Acceder a la página
 driver.get("http://scw.pjn.gov.ar/scw/home.seam")  # Sustituir con la URL de la página
