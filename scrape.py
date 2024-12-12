@@ -18,7 +18,7 @@ chrome_options.add_argument("--disable-gpu")  # Opcional, puede mejorar la estab
 chrome_options.add_argument("--window-size=1920,1080")  # Tamaño de la ventana virtual
 
 # Inicializar el WebDriver
-service = Service('chromedriver')  # Ruta al ejecutable de ChromeDriver
+service = Service('/home/ubuntu/Qanlex-Scrapper/chromedriver')  # Ruta al ejecutable de ChromeDriver
 driver = webdriver.Chrome(service=service, options=chrome_options)
 
 # Acceder a la página
