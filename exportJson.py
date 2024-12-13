@@ -2,6 +2,16 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 import json
+from dotenv import load_dotenv
+import os
+
+# Obtener valores de database desde .env
+load_dotenv()
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DATABASE = os.getenv("DB_DATABASE")
+
 
 def json_to_excel(json_data, excel_file_path):
     """
@@ -112,6 +122,12 @@ def json_to_mysql(json_data, host, user, password, database):
                 )
             """)
 
+            # Eliminar datos existentes
+            cursor.execute("DELETE FROM Actuaciones")
+            cursor.execute("DELETE FROM Participantes")
+            cursor.execute("DELETE FROM Fiscales")
+            cursor.execute("DELETE FROM Expedientes")
+
             # Insertar datos en las tablas
             for expediente in json_data:
                 cursor.execute("""
@@ -161,4 +177,4 @@ if __name__ == "__main__":
     with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
     #json_to_excel(data, "data.xlsx")  # Convertir JSON a Excel
-    json_to_mysql(data, "localhost", "user", "password", "expedientes")  # Convertir JSON a MySQL
+    json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)  # Convertir JSON a MySQL

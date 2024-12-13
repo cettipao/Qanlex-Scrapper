@@ -6,20 +6,39 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
-import json
 import time
 from exportJson import json_to_excel, json_to_mysql
+from dotenv import load_dotenv
+from twocaptcha import TwoCaptcha
+import os
+import sys
 
-chrome_options = Options()
-chrome_options.add_argument("--headless")  # Modo sin interfaz gráfica
-chrome_options.add_argument("--no-sandbox")  # Necesario para entornos sin privilegios
-chrome_options.add_argument("--disable-dev-shm-usage")  # Soluciona problemas de memoria compartida en algunos sistemas
-chrome_options.add_argument("--disable-gpu")  # Opcional, puede mejorar la estabilidad
-chrome_options.add_argument("--window-size=1920,1080")  # Tamaño de la ventana virtual
+load_dotenv()
+PRODUCTION = os.getenv("PRODUCTION").lower() == "true"
+api_key = os.getenv("APIKEY_2CAPTCHA")
 
-# Inicializar el WebDriver
-service = Service('/home/ubuntu/Qanlex-Scrapper/chromedriver')  # Ruta al ejecutable de ChromeDriver
-driver = webdriver.Chrome(service=service, options=chrome_options)
+DB_HOST = os.getenv("DB_HOST")
+DB_USER = os.getenv("DB_USER")
+DB_PASSWORD = os.getenv("DB_PASSWORD")
+DB_DATABASE = os.getenv("DB_DATABASE")
+
+
+if PRODUCTION:
+    chrome_options = Options()
+    chrome_options.add_argument("--headless")  # Modo sin interfaz gráfica
+    chrome_options.add_argument("--no-sandbox")  # Necesario para entornos sin privilegios
+    chrome_options.add_argument("--disable-dev-shm-usage")  # Soluciona problemas de memoria compartida en algunos sistemas
+    chrome_options.add_argument("--disable-gpu")  # Opcional, puede mejorar la estabilidad
+    chrome_options.add_argument("--window-size=1920,1080")  # Tamaño de la ventana virtual
+
+    # Inicializar el WebDriver
+    service = Service('/home/ubuntu/Qanlex-Scrapper/linux_driver/chromedriver')  # Ruta al ejecutable de ChromeDriver
+    driver = webdriver.Chrome(service=service, options=chrome_options)
+
+else:
+    driver = webdriver.Chrome()
+
+solver = TwoCaptcha(api_key)
 
 # Acceder a la página
 driver.get("http://scw.pjn.gov.ar/scw/home.seam")  # Sustituir con la URL de la página
@@ -48,9 +67,30 @@ select.select_by_visible_text("COM - Camara Nacional de Apelaciones en lo Comerc
 parte_input = driver.find_element(By.ID, "formPublica:nomIntervParte")
 parte_input.send_keys("Residuos")  # Ingresar el valor "Residuos"
 
+# Esperar que el CAPTCHA esté visible en la página
+captcha_iframe = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title='reCAPTCHA']")))
+
+# Cambiar al iframe donde se encuentra el CAPTCHA
+driver.switch_to.frame(captcha_iframe)
+
+
+try:
+    captcha_token = solver.solve_captcha(
+        site_key='6LcTJ1kUAAAAAJT1Xqu3gzANPfCbQG0nke9O5b6K',
+        page_url=driver.current_url)
+    
+    driver.switch_to.default_content()
+
+    # Ingresar el token del CAPTCHA en el campo correspondiente del formulario
+    captcha_input = wait.until(EC.presence_of_element_located((By.ID, "g-recaptcha-response")))  # El campo donde se inserta el token
+    driver.execute_script("arguments[0].style.display = 'block';", captcha_input)  # Hacer visible el campo si está oculto
+    captcha_input.send_keys(captcha_token)
+
+except Exception as e:
+    sys.exit(e)
+
 # Enviar el formulario para realizar la búsqueda
 search_button = wait.until(EC.element_to_be_clickable((By.ID, "formPublica:buscarPorParteButton")))
-input("Captcha Terminado:")  # Esta es una pausa manual para que se resuelva el CAPTCHA
 # Hacer clic en el botón de búsqueda después de que el CAPTCHA ha sido resuelto
 search_button.click()
 
@@ -286,16 +326,7 @@ while True:
         break  # Si no encontramos el botón "Siguiente", terminamos el loop
 
 
-
-# Imprimir los datos extraídos
-# with open("data.json", "w", encoding="utf-8") as json_file:
-#     json.dump(data, json_file, ensure_ascii=False, indent=4)
-
-# Cerrar el navegador cuando termine
 driver.quit()
-
 file_path = "data.json"
-# with open(file_path, "r", encoding="utf-8") as file:
-#     data = json.load(file)
-json_to_excel(data, "data.xlsx")  
-#json_to_mysql(data, "localhost", "user", "password", "expedientes") 
+json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)
+json_to_excel(data, "data.xlsx")
