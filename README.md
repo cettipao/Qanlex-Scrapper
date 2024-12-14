@@ -77,7 +77,7 @@ Los resultados se almacenan en una base de datos MySQL y se exportan en un excel
 
 ### Configuración de la Instancia EC2 Ubuntu
 1. **Instalar Dependencias**
-   - Google Chrome y ChromeDriver (la versión utilizada está documentada en el repositorio).
+   - Google Chrome y ChromeDriver.
    - Python 3.11 y librerías necesarias.
 
 2. **Configurar el Script de Inicio**
