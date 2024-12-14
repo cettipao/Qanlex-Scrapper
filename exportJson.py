@@ -2,15 +2,6 @@ import pandas as pd
 import mysql.connector
 from mysql.connector import Error
 import json
-from dotenv import load_dotenv
-import os
-
-# Obtener valores de database desde .env
-load_dotenv()
-DB_HOST = os.getenv("DB_HOST")
-DB_USER = os.getenv("DB_USER")
-DB_PASSWORD = os.getenv("DB_PASSWORD")
-DB_DATABASE = os.getenv("DB_DATABASE")
 
 
 def json_to_excel(json_data, excel_file_path):
@@ -77,6 +68,12 @@ def json_to_mysql(json_data, host, user, password, database):
         if connection.is_connected():
             cursor = connection.cursor()
 
+            # Eliminar datos existentes
+            cursor.execute("DROP TABLE IF EXISTS Actuaciones")
+            cursor.execute("DROP TABLE IF EXISTS Participantes")
+            cursor.execute("DROP TABLE IF EXISTS Fiscales")
+            cursor.execute("DROP TABLE IF EXISTS Expedientes")
+
             # Crear tablas si no existen
             cursor.execute("""
                 CREATE TABLE IF NOT EXISTS Expedientes (
@@ -122,12 +119,6 @@ def json_to_mysql(json_data, host, user, password, database):
                 )
             """)
 
-            # Eliminar datos existentes
-            cursor.execute("DELETE FROM Actuaciones")
-            cursor.execute("DELETE FROM Participantes")
-            cursor.execute("DELETE FROM Fiscales")
-            cursor.execute("DELETE FROM Expedientes")
-
             # Insertar datos en las tablas
             for expediente in json_data:
                 cursor.execute("""
@@ -170,11 +161,28 @@ def json_to_mysql(json_data, host, user, password, database):
             connection.close()
 
 
-
+"""
+Test de funcionamiento con un archivo JSON
+"""
 if __name__ == "__main__":
+
+    # Obtener valores de database desde .env
+    from dotenv import load_dotenv
+    import os
+    load_dotenv()
+    DB_HOST = os.getenv("DB_HOST")
+    DB_USER = os.getenv("DB_USER")
+    DB_PASSWORD = os.getenv("DB_PASSWORD")
+    DB_DATABASE = os.getenv("DB_DATABASE")
+
+    #Ruta del archivo JSON
     file_path = "data.json"
+
     #Pasar data.json a JSON
     with open(file_path, "r", encoding="utf-8") as file:
         data = json.load(file)
-    #json_to_excel(data, "data.xlsx")  # Convertir JSON a Excel
-    json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)  # Convertir JSON a MySQL
+
+    # Convertir JSON a Excel
+    json_to_excel(data, "data.xlsx") 
+    # Convertir JSON a MySQL
+    json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)  

@@ -1,10 +1,10 @@
+# Importar librerías necesarias para el scraping
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support import expected_conditions as EC
-from bs4 import BeautifulSoup
 from selenium.common.exceptions import NoSuchElementException
 import time
 from exportJson import json_to_excel, json_to_mysql
@@ -13,17 +13,22 @@ from twocaptcha import TwoCaptcha
 import os
 import sys
 
+# Cargar variables de entorno desde un archivo .env
 load_dotenv()
+
+# Determinar si estamos en un entorno de producción o no
 PRODUCTION = os.getenv("PRODUCTION").lower() == "true"
 api_key = os.getenv("APIKEY_2CAPTCHA")
 
+# Configuración de la base de datos desde las variables de entorno
 DB_HOST = os.getenv("DB_HOST")
 DB_USER = os.getenv("DB_USER")
 DB_PASSWORD = os.getenv("DB_PASSWORD")
 DB_DATABASE = os.getenv("DB_DATABASE")
 
-
+# Configuración de Selenium para el scraping
 if PRODUCTION:
+    # Opciones del navegador para producción (sin interfaz gráfica)
     chrome_options = Options()
     chrome_options.add_argument("--headless")  # Modo sin interfaz gráfica
     chrome_options.add_argument("--no-sandbox")  # Necesario para entornos sin privilegios
@@ -31,26 +36,26 @@ if PRODUCTION:
     chrome_options.add_argument("--disable-gpu")  # Opcional, puede mejorar la estabilidad
     chrome_options.add_argument("--window-size=1920,1080")  # Tamaño de la ventana virtual
 
-    # Inicializar el WebDriver
+    # Inicializar WebDriver con el ejecutable de ChromeDriver
     service = Service('/home/ubuntu/Qanlex-Scrapper/linux_driver/chromedriver')  # Ruta al ejecutable de ChromeDriver
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
 else:
+    # Si no estamos en producción, usar el WebDriver estándar
     driver = webdriver.Chrome()
 
-solver = TwoCaptcha(api_key)
 
-# Acceder a la página
+# Acceder a la página web para realizar el scraping
 driver.get("http://scw.pjn.gov.ar/scw/home.seam")  # Sustituir con la URL de la página
 
-# Esperar que el DOM cargue completamente
-wait = WebDriverWait(driver, 10)  # Espera explícita con un tiempo máximo de espera de 10 segundos
+# Esperar que el DOM de la página se cargue completamente
+wait = WebDriverWait(driver, 10)
 
-# Hacer clic en el elemento de "Por parte" para mostrar el formulario
+# Hacer clic en el botón "Por parte" para mostrar el formulario de búsqueda
 por_parte_button = wait.until(EC.element_to_be_clickable((By.ID, "formPublica:porParte:header:inactive")))
 por_parte_button.click()
 
-# Esperar que se despliegue el formulario
+# Esperar que el formulario se despliegue
 wait.until(EC.visibility_of_element_located((By.ID, "formPublica:camaraPartes")))  # Esperar que el select de jurisdicción sea visible
 
 # Interactuar con los campos dentro del formulario
@@ -59,56 +64,64 @@ jurisdiccion_select = driver.find_element(By.ID, "formPublica:camaraPartes")
 jurisdiccion_select.click()  # Hacer clic para mostrar las opciones
 wait.until(EC.visibility_of_all_elements_located((By.XPATH, "//select[@id='formPublica:camaraPartes']/option")))  # Esperar que las opciones estén visibles
 
-# Seleccionar "COM" de las opciones del select
+# Seleccionar la jurisdicción "COM - Camara Nacional de Apelaciones en lo Comercial"
 select = Select(jurisdiccion_select)
 select.select_by_visible_text("COM - Camara Nacional de Apelaciones en lo Comercial")
 
-# Ingresar un valor para el campo "Parte"
+# Ingresar "Residuos" en el campo "Parte
 parte_input = driver.find_element(By.ID, "formPublica:nomIntervParte")
 parte_input.send_keys("Residuos")  # Ingresar el valor "Residuos"
 
-# Esperar que el CAPTCHA esté visible en la página
-captcha_iframe = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title='reCAPTCHA']")))
+# Si api_key no esta vacio, resolver el CAPTCHA con el servicio de TwoCaptcha
+if api_key:
+    # Instanciar el servicio de resolución de CAPTCHA
+    solver = TwoCaptcha(api_key)
 
-# Cambiar al iframe donde se encuentra el CAPTCHA
-driver.switch_to.frame(captcha_iframe)
+    # Esperar que el CAPTCHA esté visible en la página
+    captcha_iframe = wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "iframe[title='reCAPTCHA']")))
 
+    # Cambiar al iframe donde se encuentra el CAPTCHA
+    driver.switch_to.frame(captcha_iframe)
 
-try:
-    captcha_token = solver.solve_captcha(
-        site_key='6LcTJ1kUAAAAAJT1Xqu3gzANPfCbQG0nke9O5b6K',
-        page_url=driver.current_url)
-    
-    driver.switch_to.default_content()
+    try:
+        captcha_token = solver.solve_captcha(
+            site_key='6LcTJ1kUAAAAAJT1Xqu3gzANPfCbQG0nke9O5b6K', # Clave del sitio reCAPTCHA
+            page_url=driver.current_url)
+        
+        driver.switch_to.default_content()
 
-    # Ingresar el token del CAPTCHA en el campo correspondiente del formulario
-    captcha_input = wait.until(EC.presence_of_element_located((By.ID, "g-recaptcha-response")))  # El campo donde se inserta el token
-    driver.execute_script("arguments[0].style.display = 'block';", captcha_input)  # Hacer visible el campo si está oculto
-    captcha_input.send_keys(captcha_token)
+        # Ingresar el token del CAPTCHA en el campo correspondiente del formulario
+        captcha_input = wait.until(EC.presence_of_element_located((By.ID, "g-recaptcha-response")))  # El campo donde se inserta el token
+        driver.execute_script("arguments[0].style.display = 'block';", captcha_input)  # Hacer visible el campo si está oculto
+        captcha_input.send_keys(captcha_token)
 
-except Exception as e:
-    sys.exit(e)
+    except Exception as e:
+        sys.exit(e)
+
+# Si api_key esta vacio, resolver el CAPTCHA manualmente
+else:
+    input("Por favor, resuelve el CAPTCHA y presiona Enter para continuar...")
+
 
 # Enviar el formulario para realizar la búsqueda
 search_button = wait.until(EC.element_to_be_clickable((By.ID, "formPublica:buscarPorParteButton")))
-# Hacer clic en el botón de búsqueda después de que el CAPTCHA ha sido resuelto
 search_button.click()
 
 # Esperar el resultado (asumimos que el resultado se cargará en el DOM)
 wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "table-striped")))
 
 # Extraer el contenido de la página usando BeautifulSoup
-soup = BeautifulSoup(driver.page_source, "html.parser")
+#soup = BeautifulSoup(driver.page_source, "html.parser")
 
 rows = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:]  # Saltar el encabezado
 
 data = []  # Lista para almacenar los objetos con los datos
 
-
 while True:
-    # Imprimo el primer valor de rows
+    # Obtengo el primer valor de rows para compararlo cuando cambie de página
     rows = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:]
     primera_fila = rows[0].text
+
     for i in range(len(rows)):
         # Extraer los datos de cada fila usando Selenium
         cols = rows[i].find_elements(By.TAG_NAME, 'td')  # Obtener celdas de la fila
@@ -134,8 +147,6 @@ while True:
             try:
                 # Intentar localizar la tabla de actuaciones
                 tabla_actuaciones = driver.find_element(By.ID, "expediente:action-table")
-
-                # Encontrar las filas de la tabla
                 filas = tabla_actuaciones.find_elements(By.TAG_NAME, "tr")[1:]  # Ignorar el encabezado
 
                 # Iterar sobre las filas y extraer los datos
@@ -165,9 +176,8 @@ while True:
                 # Si la tabla no existe, inicializar 'Actuaciones' como un array vacío
                 actuaciones = []
 
-
-
             # Hacer clic en la pestaña "Intervinientes"
+            # Los datos solo aparecen al hacer clic en la pestaña
             intervinientes_tab = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.ID, "expediente:j_idt261:header:inactive"))
             )
@@ -179,18 +189,25 @@ while True:
             participants_table = driver.find_element(By.ID, "expediente:participantsTable")
             tbodies = participants_table.find_elements(By.TAG_NAME, "tbody")
 
+            """
+            Aclaracion: 
+            La tabla de intervinientes tiene como filas tbodys con distintos formatos
+            """
+
             for tbody in tbodies:
                 rows = tbody.find_elements(By.TAG_NAME, "tr")
                 
                 for row in rows:
                     # Filtrar filas visibles y con contenido útil
-                    if row.is_displayed() and len(row.find_elements(By.TAG_NAME, "td")) > 1:
+                    if row.is_displayed() and len(row.find_elements(By.TAG_NAME, "td")) > 1: # Verificar que la fila tenga al menos dos celdas
                         cols = row.find_elements(By.TAG_NAME, "td")
                         tipo = ""
                         nombre = ""
                         tomo_folio = ""
                         iej = ""
 
+                        # A veces, el contenido a scrappear se encuentra dentro de un span con font-strong
+                        # y hay que ignorar otros spans que solo tienen el nombre del atributo
                         try:
                             tipo = cols[0].find_element(By.XPATH, ".//span[@class='font-strong']").text.strip()
                         except:
@@ -216,6 +233,7 @@ while True:
                                 "I.E.J.": iej
                             })
 
+            # Scrappeamos tambien los fiscales, si hay
             fiscales = []
             try:
                 fiscales_table = driver.find_element(By.ID, "expediente:fiscalesTable")
@@ -311,15 +329,19 @@ while True:
             # Esperar que la tabla se recargue y esté lista para la siguiente iteración
             wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "table-striped")))
             rows = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:]
+
     # Verificar si hay un botón "Siguiente" en la página
     try:
         siguiente_button = driver.find_element(By.ID, "j_idt118:j_idt208:j_idt215")
         if siguiente_button.is_displayed():  # Si el botón está visible
             siguiente_button.click()  # Hacer clic en "Siguiente"
+
+            # Esperar que la tabla se recargue y esté lista para la siguiente iteración
             rows_changed = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:] 
             while rows_changed[0].text == primera_fila:
                 time.sleep(0.5)
                 rows_changed = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:]
+
         else:
             break  # Si no hay botón "Siguiente", terminamos el loop
     except NoSuchElementException:
@@ -327,6 +349,5 @@ while True:
 
 
 driver.quit()
-file_path = "data.json"
 json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)
 json_to_excel(data, "data.xlsx")
