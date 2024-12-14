@@ -12,7 +12,7 @@ Este proyecto implementa un scraper web diseñado para recopilar información ju
 - Juzgado o tribunal
 - Fechas relevantes
 
-Los resultados se almacenan en una base de datos MySQL para su análisis posterior.
+Los resultados se almacenan en una base de datos MySQL y se exportan en un excel para su análisis posterior.
 
 ## Características
 - **Automatización del CAPTCHA** utilizando el servicio [2Captcha](https://2captcha.com).
@@ -132,7 +132,13 @@ Los resultados se almacenan en una base de datos MySQL para su análisis posteri
 
    - Configurada como target de un evento diario en EventBridge (8:00 AM).
 
-2. **Base de Datos MySQL**:
+2. **Programación de EventBridge**:
+   - Configurar una regla de EventBridge para ejecutar la función Lambda todos los días a las 8:00 AM utilizando un cron expression: `0 8 * * ? *`.
+
+---
+
+### Almacenamiento de Datos
+1. **Base de Datos MySQL**:
    - Crear una instancia en AWS RDS.
    - Configurar las credenciales en el archivo `.env` del scraper.
 
@@ -152,35 +158,49 @@ Los resultados se almacenan en una base de datos MySQL para su análisis posteri
 A continuación se muestran ejemplos de la implementación de los opcionales:
 1. **Automatización del CAPTCHA**:
    
+![alt text](screenshots/image-10.png)
+
+![alt text](screenshots/image-11.png)
 
 2. **Instancia EC2**:
 
-![alt text](image.png)
+![alt text](screenshots/image.png)
 
-![alt text](image-1.png)
+![alt text](screenshots/image-1.png)
 
-![alt text](image-2.png)
+![alt text](screenshots/image-2.png)
+
+![alt text](screenshots/image-9.png)
 
 3. **Funcion Lambda**:
    
-![alt text](image-3.png)
+![alt text](screenshots/image-3.png)
 
 4. **Programacion EventBridge**:
 
-![alt text](image-4.png)
+![alt text](screenshots/image-4.png)
 
-![alt text](image-5.png)
+![alt text](screenshots/image-5.png)
 
 5. **Base de Datos**:
 
-
+![alt text](screenshots/image-6.png)
    
+![alt text](screenshots/image-7.png)
+
+![alt text](screenshots/image-8.png)
 
 ---
 
-## Contribuciones
-Este proyecto fue desarrollado por **Paolo Cetti** como parte de un ejercicio de selección para Qanlex. Si deseas aportar mejoras o reportar problemas, por favor abre un [issue](https://github.com/tuusuario/qanlex-scraper/issues) o envía un pull request.
+## Posibles Mejoras
+1. **Pipeline de GitHub Actions**: Implementar un pipeline que ejecute pruebas automáticas del scraper y verifique su funcionamiento antes de pasar a producción. Esto incluye pruebas de unidad, integración y despliegue automatizado.
 
-## Licencia
-Este proyecto está bajo la licencia MIT. Consulta el archivo `LICENSE` para más detalles.
+2. **Manejo de Errores y Retries**: Mejorar la robustez del scraper añadiendo lógica de reintentos en caso de fallos y utilizando colas de mensajes para manejar tareas en segundo plano de forma eficiente.
+
+3. **Optimización de la Extracción de Datos**: Implementar scraping en paralelo con herramientas como Scrapy o Celery para reducir el tiempo de extracción en grandes volúmenes de datos.
+
+4. **Monitoreo y Notificaciones**: Añadir notificaciones y un sistema de monitoreo (como Slack o ELK Stack) para alertar sobre fallos en tiempo real.
+
+## Desarrollador
+Este proyecto fue desarrollado por **Paolo Cetti** como parte de un ejercicio de selección para Qanlex.
 
