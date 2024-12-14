@@ -349,5 +349,7 @@ while True:
 
 
 driver.quit()
+print("INFO: Scrape ejecutado exitosamente")
 json_to_mysql(data, DB_HOST, DB_USER, DB_PASSWORD, DB_DATABASE)
+print("INFO: Datos guardados en MySQL")
 json_to_excel(data, "data.xlsx")
