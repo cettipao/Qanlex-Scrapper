@@ -1,4 +1,6 @@
 # Importar librerías necesarias para el scraping
+import os
+import sys
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
@@ -10,8 +12,6 @@ import time
 from exportJson import json_to_excel, json_to_mysql
 from dotenv import load_dotenv
 from twocaptcha import TwoCaptcha
-import os
-import sys
 
 # Cargar variables de entorno desde un archivo .env
 load_dotenv()
@@ -109,11 +109,6 @@ search_button.click()
 
 # Esperar el resultado (asumimos que el resultado se cargará en el DOM)
 wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "table-striped")))
-
-# Extraer el contenido de la página usando BeautifulSoup
-#soup = BeautifulSoup(driver.page_source, "html.parser")
-
-rows = driver.find_elements(By.CSS_SELECTOR, "table.table-striped tr")[1:]  # Saltar el encabezado
 
 data = []  # Lista para almacenar los objetos con los datos
 
